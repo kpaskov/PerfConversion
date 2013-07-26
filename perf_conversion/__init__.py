@@ -6,6 +6,7 @@ from sqlalchemy.orm.session import sessionmaker
 from sqlalchemy.types import Float
 import datetime
 import requests
+import simplejson
 import sys
 
 def get_json(url, data=None):
@@ -13,7 +14,6 @@ def get_json(url, data=None):
         r = requests.post(url, data=data)
     else:
         r = requests.get(url)
-        print r.url
     return r.json()
 
 def prepare_schema_connection(model_cls, config_cls):
@@ -204,5 +204,26 @@ def execute_conversion(convert_f, new_session_maker, ask, **kwargs):
         write_to_output_file( "Unexpected error:" + str(sys.exc_info()[0]) )
         raise
     finally:
-        new_session.close()    
+        new_session.close()   
+        
+def convert_f(cls, link_f):
+    def f(new_session, min_id=None, max_id=None):
+        from model_perf_schema.interaction import BioentInteractionOverview
+        from model_perf_schema.bioentity import BioentMap
+        
+        #Cache interaction overviews
+        id_to_bioents = cache_by_id_in_range(BioentMap, BioentMap.bioent_id, new_session, min_id, max_id)
+        key_to_objs = cache_by_key_in_range(cls, cls.bioent_id, new_session, min_id, max_id)
+    
+        #Grab interaction overviews from backend
+        new_objs = []
+        for bioent_id in range(min_id, max_id):
+            if bioent_id in id_to_bioents:
+                bioent_name = id_to_bioents[bioent_id].format_name
+                json = simplejson.dumps(get_json(link_f(bioent_key=bioent_name)))
+                new_objs.append(cls(bioent_id, json))
+       
+        success = create_or_update_and_remove(new_objs, key_to_objs, ['json'], new_session)
+        return success 
+    return f
         

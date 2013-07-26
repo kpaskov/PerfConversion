@@ -3,7 +3,7 @@ Created on Jul 24, 2013
 
 @author: kpaskov
 '''
-from model_perf_schema import config as new_config
+from perf_conversion import config as new_config
 from perf_conversion import execute_conversion, \
     cache_by_key_in_range, get_json, create_or_update_and_remove, \
     prepare_schema_connection
@@ -36,7 +36,7 @@ def convert_bioentity(new_session, min_id=None, max_id=None):
 
     #Grab bioentities from backend
     new_bioentities = []
-    bioents_json = get_json(all_bioentity_link())
+    bioents_json = get_json(all_bioentity_link(str(min_id), str(max_id)))
     for bioent_json in bioents_json:
         new_bioentities.append(BioentMap(bioent_json['format_name'], bioent_json['bioent_type'], bioent_json['bioent_id']))
    

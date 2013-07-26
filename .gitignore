@@ -1,3 +1,4 @@
 *.class
 *.pyc
 *.pyo
+perf_conversion/config.py
