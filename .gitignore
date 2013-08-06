@@ -2,3 +2,9 @@
 *.pyc
 *.pyo
 perf_conversion/config.py
+bin
+develop-eggs
+eggs
+parts
+perf_conversion.egg-info
+src

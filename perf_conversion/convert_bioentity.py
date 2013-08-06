@@ -3,12 +3,12 @@ Created on Jul 24, 2013
 
 @author: kpaskov
 '''
-from perf_conversion import config as new_config
-from perf_conversion import execute_conversion, \
+from perf_conversion import config as new_config, execute_conversion, \
     cache_by_key_in_range, get_json, create_or_update_and_remove, \
     prepare_schema_connection
 from perf_conversion.link_maker import all_bioentity_link
 from perf_conversion.output_manager import write_to_output_file
+import json
 import model_perf_schema
 
 def convert(new_session_maker, ask=True):
@@ -32,15 +32,16 @@ def convert_bioentity(new_session, min_id=None, max_id=None):
     from model_perf_schema.bioentity import BioentMap
     
     #Cache bioentities
-    key_to_bioents = cache_by_key_in_range(BioentMap, BioentMap.bioent_id, new_session, min_id, max_id)
+    key_to_bioents = cache_by_key_in_range(BioentMap, BioentMap.id, new_session, min_id, max_id)
 
     #Grab bioentities from backend
     new_bioentities = []
     bioents_json = get_json(all_bioentity_link(str(min_id), str(max_id)))
     for bioent_json in bioents_json:
-        new_bioentities.append(BioentMap(bioent_json['format_name'], bioent_json['bioent_type'], bioent_json['bioent_id']))
+        new_bioentities.append(BioentMap(bioent_json['bioent_id'], bioent_json['format_name'], 
+                                    bioent_json['bioent_type'], json.dumps(bioent_json)))
    
-    success = create_or_update_and_remove(new_bioentities, key_to_bioents, ['bioent_id'], new_session)
+    success = create_or_update_and_remove(new_bioentities, key_to_bioents, ['json'], new_session)
     return success
 
 if __name__ == "__main__":
