@@ -11,7 +11,8 @@ import sys
 
 def get_json(url, data=None):
     if data is not None:
-        r = requests.post(url, data=data)
+        headers = {'Content-type': 'application/json; charset=utf-8"', 'processData': False}
+        r = requests.post(url, data=json.dumps(data), headers=headers)
     else:
         r = requests.get(url)
     return r.json()
@@ -69,11 +70,6 @@ def cache_by_id(cls, session, **kwargs):
 
 def cache_link_by_id(cls, session, **kwargs):
     cache_entries = dict([(x.id, x.name_with_link) for x in session.query(cls.id, cls.name_with_link).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_references(session):
-    from model_new_schema.reference import Reference as NewReference
-    cache_entries = dict([(x.id, (x.name_with_link, x.citation)) for x in session.query(NewReference.id, NewReference.name_with_link, NewReference.citation).all()])
     return cache_entries
 
 def cache_by_id_in_range(cls, col, session, min_id, max_id, **kwargs):
@@ -208,20 +204,20 @@ def execute_conversion(convert_f, new_session_maker, ask, **kwargs):
         
 def convert_f(cls, link_f):
     def f(new_session, min_id=None, max_id=None):
-        from model_perf_schema.interaction import BioentInteractionOverview
-        from model_perf_schema.bioentity import BioentMap
+        from model_perf_schema.bioentity import Bioentity
         
-        #Cache interaction overviews
-        id_to_bioents = cache_by_id_in_range(BioentMap, BioentMap.id, new_session, min_id, max_id)
+        #Cache objs
+        id_to_bioents = cache_by_id_in_range(Bioentity, Bioentity.id, new_session, min_id, max_id)
         key_to_objs = cache_by_key_in_range(cls, cls.bioent_id, new_session, min_id, max_id)
     
-        #Grab interaction overviews from backend
+        #Grab objs from backend
         new_objs = []
         for bioent_id in range(min_id, max_id):
             if bioent_id in id_to_bioents:
-                bioent_name = id_to_bioents[bioent_id].format_name
+                format_name = id_to_bioents[bioent_id].format_name
+                bioent_type = id_to_bioents[bioent_id].bioent_type
                 try:
-                    json_obj = get_json(link_f(bioent_key=bioent_name))
+                    json_obj = get_json(link_f(bioent=format_name, bioent_type=bioent_type))
                     json_string = json.dumps(json_obj)
                     new_objs.append(cls(bioent_id, json_string))
                 except:

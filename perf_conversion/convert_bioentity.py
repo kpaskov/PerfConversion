@@ -29,17 +29,16 @@ def convert_bioentity(new_session, min_id=None, max_id=None):
     '''
     Convert Bioentity
     '''
-    from model_perf_schema.bioentity import BioentMap
+    from model_perf_schema.bioentity import Bioentity
     
     #Cache bioentities
-    key_to_bioents = cache_by_key_in_range(BioentMap, BioentMap.id, new_session, min_id, max_id)
+    key_to_bioents = cache_by_key_in_range(Bioentity, Bioentity.id, new_session, min_id, max_id)
 
     #Grab bioentities from backend
     new_bioentities = []
     bioents_json = get_json(all_bioentity_link(str(min_id), str(max_id)))
     for bioent_json in bioents_json:
-        new_bioentities.append(BioentMap(bioent_json['bioent_id'], bioent_json['format_name'], 
-                                    bioent_json['bioent_type'], json.dumps(bioent_json)))
+        new_bioentities.append(Bioentity(bioent_json['id'], json.dumps(bioent_json)))
    
     success = create_or_update_and_remove(new_bioentities, key_to_bioents, ['json'], new_session)
     return success

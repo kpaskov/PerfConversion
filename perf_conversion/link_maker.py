@@ -21,12 +21,36 @@ def add_format_name_params(link, key_to_format_name):
 def all_bioentity_link(min_id, max_id):
     return add_format_name_params('/all_bioents?', {'min':min_id, 'max':max_id}) + '&callback=?'
 
+#Reference Links
+def all_reference_link(min_id, max_id):
+    return add_format_name_params('/all_references?', {'min':min_id, 'max':max_id}) + '&callback=?'
+def reference_list_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_overview'
+
 #Interaction Links
-def interaction_overview_table_link(bioent_key=None, reference_key=None):
-    return add_format_name_params('/interaction_overview_table?', {'bioent':bioent_key, 'reference':reference_key})
-def interaction_evidence_table_link(bioent_key=None, biorel_key=None):
-    return add_format_name_params('/interaction_evidence_table?', {'bioent':bioent_key, 'biorel': biorel_key})
-def interaction_graph_link(bioent_key=None):
-    return add_format_name_params('/interaction_graph?', {'bioent':bioent_key})
-def interaction_evidence_resource_link(bioent_key=None):
-    return add_format_name_params('/interaction_evidence_resources?', {'bioent':bioent_key})
+def interaction_overview_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_overview'
+def interaction_details_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_details'
+def interaction_graph_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_graph'
+def interaction_resources_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_resources'
+def interaction_references_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_references'
+
+#Literature Links
+def literature_overview_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/literature_overview'
+def literature_details_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/literature_details'
+def literature_graph_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/literature_graph'
+
+#Go Links
+def go_references_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/go_references'
+
+#Phenotype Links
+def phenotype_references_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/phenotype_references'

@@ -5,13 +5,11 @@ Created on Jul 24, 2013
 '''
 
 from perf_conversion import config as new_config, execute_conversion, \
-    cache_by_key_in_range, get_json, cache_by_id_in_range, \
-    create_or_update_and_remove, prepare_schema_connection, convert_f
-from perf_conversion.link_maker import interaction_overview_table_link, \
-    interaction_evidence_table_link, interaction_graph_link, \
-    interaction_evidence_resource_link
+    prepare_schema_connection, convert_f
+from perf_conversion.link_maker import interaction_overview_link, \
+    interaction_details_link, interaction_graph_link, interaction_resources_link, \
+    interaction_references_link
 from perf_conversion.output_manager import write_to_output_file
-import json
 import model_perf_schema
 
 '''
@@ -22,8 +20,8 @@ import model_perf_schema
 
 def convert(new_session_maker7, ask=True):
     
-    from model_perf_schema.interaction import BioentInteractionOverview, BioentInteractionEvidence, \
-                            BioentInteractionGraph, BioentInteractionEvidenceResource
+    from model_perf_schema.interaction import InteractionOverview, InteractionDetails, \
+                            InteractionGraph, InteractionResources, InteractionReferences
     
     intervals = [0, 500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
     # Convert interaction overview
@@ -32,7 +30,7 @@ def convert(new_session_maker7, ask=True):
         min_id = intervals[i]
         max_id = intervals[i+1]
         write_to_output_file('Bioent ids between ' + str(min_id) + ' and ' + str(max_id))
-        cf = convert_f(BioentInteractionOverview, interaction_overview_table_link)
+        cf = convert_f(InteractionOverview, interaction_overview_link)
         execute_conversion(cf, new_session_maker, ask,
                        min_id = min_id,
                        max_id = max_id)
@@ -43,7 +41,7 @@ def convert(new_session_maker7, ask=True):
         min_id = intervals[i]
         max_id = intervals[i+1]
         write_to_output_file('Bioent ids between ' + str(min_id) + ' and ' + str(max_id))
-        cf = convert_f(BioentInteractionEvidence, interaction_evidence_table_link)
+        cf = convert_f(InteractionDetails, interaction_details_link)
         execute_conversion(cf, new_session_maker, ask,
                        min_id = min_id,
                        max_id = max_id)
@@ -54,18 +52,29 @@ def convert(new_session_maker7, ask=True):
         min_id = intervals[i]
         max_id = intervals[i+1]
         write_to_output_file('Bioent ids between ' + str(min_id) + ' and ' + str(max_id))
-        cf = convert_f(BioentInteractionGraph, interaction_graph_link)
+        cf = convert_f(InteractionGraph, interaction_graph_link)
         execute_conversion(cf, new_session_maker, ask,
                        min_id = min_id,
                        max_id = max_id)
         
-    # Convert interaction evidence resources
-    write_to_output_file('Interaction Evidence Resources')
+    # Convert interaction resources
+    write_to_output_file('Interaction Resources')
     for i in range(0, len(intervals)-1):
         min_id = intervals[i]
         max_id = intervals[i+1]
         write_to_output_file('Bioent ids between ' + str(min_id) + ' and ' + str(max_id))
-        cf = convert_f(BioentInteractionEvidenceResource, interaction_evidence_resource_link)
+        cf = convert_f(InteractionResources, interaction_resources_link)
+        execute_conversion(cf, new_session_maker, ask,
+                       min_id = min_id,
+                       max_id = max_id)
+        
+    # Convert interaction references
+    write_to_output_file('Interaction References')
+    for i in range(0, len(intervals)-1):
+        min_id = intervals[i]
+        max_id = intervals[i+1]
+        write_to_output_file('Bioent ids between ' + str(min_id) + ' and ' + str(max_id))
+        cf = convert_f(InteractionReferences, interaction_references_link)
         execute_conversion(cf, new_session_maker, ask,
                        min_id = min_id,
                        max_id = max_id)
