@@ -4,8 +4,9 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.ext.declarative.api import declarative_base
 from sqlalchemy.orm.session import sessionmaker
 from sqlalchemy.types import Float
-import datetime
+from datetime import datetime
 import json
+import logging
 import requests
 import sys
 
@@ -15,7 +16,22 @@ def get_json(url, data=None):
         r = requests.post(url, data=json.dumps(data), headers=headers)
     else:
         r = requests.get(url)
-    return r.json()
+    return r.json
+
+def set_up_logging(label):
+    logging.basicConfig(format='%(asctime)s %(name)s: %(message)s', level=logging.INFO, datefmt='%m/%d/%Y %H:%M:%S')
+    
+    requests_log = logging.getLogger("requests")
+    requests_log.setLevel(logging.WARNING)
+    
+    log = logging.getLogger(label)
+    
+    hdlr = logging.FileHandler('/Users/kpaskov/Documents/Schema Conversion Logs/' + label + '.' + str(datetime.now()) + '.txt')
+    formatter = logging.Formatter('%(asctime)s %(name)s: %(message)s', '%m/%d/%Y %H:%M:%S')
+    hdlr.setFormatter(formatter)
+    log.addHandler(hdlr) 
+    log.setLevel(logging.INFO)
+    return log
 
 def prepare_schema_connection(model_cls, config_cls):
     model_cls.SCHEMA = config_cls.SCHEMA
@@ -47,127 +63,47 @@ def check_values(new_obj, old_obj, field_names, output_creator, key):
     for field_name in field_names:
         if not check_value(new_obj, old_obj, field_name):
             output_creator.changed(key, field_name)
-
-def cache_by_key(cls, session, **kwargs):
-    cache_entries = dict([(x.unique_key(), x) for x in session.query(cls).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_link_by_key(cls, session, **kwargs):
-    cache_entries = dict([(x.unique_key(), (x.id, x.name_with_link)) for x in session.query(cls).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_name_by_key(cls, session, **kwargs):
-    cache_entries = dict([(x.unique_key(), (x.id, x.display_name)) for x in session.query(cls).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_by_key_in_range(cls, col, session, min_id, max_id, **kwargs):
-    cache_entries = dict([(x.unique_key(), x) for x in session.query(cls).filter(col >= min_id).filter(col < max_id).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_by_id(cls, session, **kwargs):
-    cache_entries = dict([(x.id, x) for x in session.query(cls).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_link_by_id(cls, session, **kwargs):
-    cache_entries = dict([(x.id, x.name_with_link) for x in session.query(cls.id, cls.name_with_link).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_by_id_in_range(cls, col, session, min_id, max_id, **kwargs):
-    cache_entries = dict([(x.id, x) for x in session.query(cls).filter(col >= min_id).filter(col < max_id).filter_by(**kwargs).all()])
-    return cache_entries
-
-def cache_ids(cls, session, **kwargs):
-    cache_ids = [x.id for x in session.query(cls.id).filter_by(**kwargs).all()]
-    return cache_ids
-
-def cache_ids_in_range(cls, col, session, min_id, max_id, **kwargs):
-    cache_ids = [x.id for x in session.query(cls.id).filter(col >= min_id).filter(col < max_id).filter_by(**kwargs).all()]
-    return cache_ids
     
-def add_or_check(new_obj, mapping, key, values_to_check, session, output_creator):
-    if key in mapping:
-        current_obj = mapping[key]
+def add_or_check(new_obj, key_mapping, id_mapping, key, values_to_check, session, output_creator):
+    if key in key_mapping:
+        current_obj = key_mapping[key]
         check_values(new_obj, current_obj, values_to_check, output_creator, key)
         return False
     else:
+        if new_obj.id in id_mapping:
+            to_be_removed = id_mapping[new_obj.id]
+            session.delete(to_be_removed)
+        
         session.add(new_obj)
-        mapping[key] = new_obj
+        key_mapping[key] = new_obj
+        id_mapping[new_obj.id] = new_obj
         output_creator.added()
         return True
     
-def create_or_update(new_objs, mapping, values_to_check, session):
-    new_objs = filter(None, new_objs)
-    output_creator = OutputCreator()
-    
-    to_be_added = set([new_obj.id for new_obj in new_objs if new_obj.unique_key() not in mapping])
-    problem_objs = [old_obj for old_obj in mapping.values() if old_obj.id in to_be_added]
-    if len(problem_objs) > 0:
-        write_to_output_file( str(len(problem_objs)) + ' problem objects exist and must be deleted to continue.' )
-        write_to_output_file( [problem.id for problem in problem_objs] )
-        for obj in problem_objs:
-            session.delete(obj)
-        return False
+def create_or_update(new_obj, current_obj_by_id, current_obj_by_key, values_to_check, session, output_creator):
+    #If there's an object with the same key and it also has the same id, then that's our object - we just need to
+    #check to make sure it's values match ours.
+    if current_obj_by_key is not None and (new_obj.id is None or current_obj_by_key.id == new_obj.id):
+        for value_to_check in values_to_check:
+            if not check_value(new_obj, current_obj_by_key, value_to_check):
+                output_creator.changed(current_obj_by_key.unique_key(), value_to_check)   
+        return False 
     else:
-        # Check old objects or add new objects.
-        for new_obj in new_objs:
-            key = new_obj.unique_key()
-            add_or_check(new_obj, mapping, key, values_to_check, session, output_creator)
-            
-        output_creator.finished()
-        return True
-    
-def create_or_update_and_remove(new_objs, mapping, values_to_check, session, full_mapping=None):
-    if len(new_objs) > 150000:
-        print 'Too many objects!'
-        print len(new_objs)
-        raise Exception();
-    
-    if full_mapping is None:
-        full_mapping = mapping
-    
-    new_objs = filter(None, new_objs)
-    new_objs.sort()
-    output_creator = OutputCreator()
-    to_be_removed = set(mapping.keys())
-    
-    to_be_added = set([new_obj.id for new_obj in new_objs if new_obj.unique_key() not in mapping])
-    problem_objs = [old_obj for old_obj in mapping.values() if old_obj.id in to_be_added]
-    if len(problem_objs) > 0:
-        write_to_output_file( str(len(problem_objs)) + ' problem objects exist and must be deleted to continue.' )
-        write_to_output_file( [problem.id for problem in problem_objs] )
-        for obj in problem_objs:
-            session.delete(obj)
-        return False
-    else:
-        # Check old objects or add new objects.
-        for new_obj in new_objs:
-            key = new_obj.unique_key()
-            add_or_check(new_obj, full_mapping, key, values_to_check, session, output_creator)
-            
-            if key in to_be_removed:
-                to_be_removed.remove(key)
-            
-        for r_id in to_be_removed:
-            session.delete(mapping[r_id])
+        if current_obj_by_id is not None:
+            session.delete(current_obj_by_id)
+            print 'Removed ' + str(new_obj.id)
             output_creator.removed()
-        output_creator.finished()
+            session.commit()
+        
+        if current_obj_by_key is not None:
+            session.delete(current_obj_by_key)
+            print 'Removed' + str(new_obj.unique_key())
+            output_creator.removed()
+            session.commit()
+            
+        session.add(new_obj)
+        output_creator.added()
         return True
-    
-def ask_to_commit(new_session, start_time):
-    pause_begin = datetime.datetime.now()
-    user_input = None
-    while user_input != 'Y' and user_input != 'N':
-        user_input = raw_input('Commit these changes (Y/N)?')
-    pause_end = datetime.datetime.now()
-    if user_input == 'Y':
-        new_session.commit()
-    end_time = datetime.datetime.now()
-    write_to_output_file( str(end_time - pause_end + pause_begin - start_time) + '\n' )
-    
-def commit_without_asking(new_session, start_time):
-    new_session.commit()
-    end_time = datetime.datetime.now()
-    write_to_output_file(str(end_time - start_time) + '\n')
     
 def create_format_name(display_name):
     format_name = display_name.replace(' ', '_')
@@ -184,46 +120,3 @@ def float_approx_equal(x, y, tol=1e-18, rel=1e-7):
     assert tests
     return abs(x - y) <= max(tests)
 
-def execute_conversion(convert_f, new_session_maker, ask, **kwargs):
-    start_time = datetime.datetime.now()
-    try:
-        success = False
-        while not success:
-            new_session = new_session_maker()
-            success = convert_f(new_session, **kwargs)
-            if ask:
-                ask_to_commit(new_session, start_time)  
-            else:
-                commit_without_asking(new_session, start_time)
-            new_session.close()
-    except Exception:
-        write_to_output_file( "Unexpected error:" + str(sys.exc_info()[0]) )
-        raise
-    finally:
-        new_session.close()   
-        
-def convert_f(cls, link_f):
-    def f(new_session, min_id=None, max_id=None):
-        from model_perf_schema.bioentity import Bioentity
-        
-        #Cache objs
-        id_to_bioents = cache_by_id_in_range(Bioentity, Bioentity.id, new_session, min_id, max_id)
-        key_to_objs = cache_by_key_in_range(cls, cls.bioent_id, new_session, min_id, max_id)
-    
-        #Grab objs from backend
-        new_objs = []
-        for bioent_id in range(min_id, max_id):
-            if bioent_id in id_to_bioents:
-                format_name = id_to_bioents[bioent_id].format_name
-                bioent_type = id_to_bioents[bioent_id].bioent_type
-                try:
-                    json_obj = get_json(link_f(bioent=format_name, bioent_type=bioent_type))
-                    json_string = json.dumps(json_obj)
-                    new_objs.append(cls(bioent_id, json_string))
-                except:
-                    pass
-       
-        success = create_or_update_and_remove(new_objs, key_to_objs, ['json'], new_session)
-        return success 
-    return f
-        

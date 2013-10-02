@@ -18,14 +18,16 @@ def add_format_name_params(link, key_to_format_name):
     return full_link
 
 #Bioentity Links
-def all_bioentity_link(min_id, max_id):
-    return add_format_name_params('/all_bioents?', {'min':min_id, 'max':max_id}) + '&callback=?'
+def all_bioentity_link():
+    return backend_start + '/all_bioents?callback=?'
+def bioentitytabs_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/tabs'
 
 #Reference Links
-def all_reference_link(min_id, max_id):
-    return add_format_name_params('/all_references?', {'min':min_id, 'max':max_id}) + '&callback=?'
-def reference_list_link(bioent, bioent_type):
-    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/interaction_overview'
+def all_reference_link():
+    return backend_start + '/all_references?callback=?'
+def all_bibentry_link():
+    return backend_start + '/all_bibentries?callback=?'
 
 #Interaction Links
 def interaction_overview_link(bioent, bioent_type):
@@ -47,6 +49,16 @@ def literature_details_link(bioent, bioent_type):
 def literature_graph_link(bioent, bioent_type):
     return backend_start + '/' + bioent_type + '/' + str(bioent) + '/literature_graph'
 
+#Regulation Links
+def regulation_overview_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/regulation_overview'
+def regulation_details_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/regulation_details'
+def regulation_graph_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/regulation_graph'
+def regulation_references_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/regulation_references'
+
 #Go Links
 def go_references_link(bioent, bioent_type):
     return backend_start + '/' + bioent_type + '/' + str(bioent) + '/go_references'
@@ -54,3 +66,9 @@ def go_references_link(bioent, bioent_type):
 #Phenotype Links
 def phenotype_references_link(bioent, bioent_type):
     return backend_start + '/' + bioent_type + '/' + str(bioent) + '/phenotype_references'
+
+#Protein Links
+def protein_domain_details_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/protein_domain_details'
+def binding_site_details_link(bioent, bioent_type):
+    return backend_start + '/' + bioent_type + '/' + str(bioent) + '/binding_site_details'
