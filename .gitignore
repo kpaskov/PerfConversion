@@ -8,3 +8,4 @@ eggs
 parts
 perf_conversion.egg-info
 src
+perf_conversion/config.py

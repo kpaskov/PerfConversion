@@ -8,9 +8,9 @@ CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
 
 requires = [
             'perf_orm',
-            'SGDBackend',
             'simplejson',
-            'requests'
+            'requests',
+            'mpmath'
     ]
 
 setup(name='perf_conversion',
