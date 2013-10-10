@@ -21,8 +21,16 @@ import logging
 import model_perf_schema
 import sys
 
-def convert_bioentity(sessionmaker, link, cls, chunk_size):
-    log = logging.getLogger('convert.performance.' + cls.__name__)
+def create_bioentity(obj_json):
+    from model_perf_schema.bioentity import Bioentity
+    dbxref = None
+    if 'dbxref' in obj_json:
+        dbxref = obj_json['dbxref']
+    newly_created_obj = Bioentity(obj_json['id'], obj_json['format_name'], obj_json['display_name'], dbxref, obj_json['bioent_type'], json.dumps(obj_json))
+    return newly_created_obj     
+
+def convert_bioentity(sessionmaker, link, chunk_size):
+    log = logging.getLogger('convert.performance.bioentity')
     log.info('begin')
     output_creator = OutputCreator(log)
     
@@ -30,7 +38,8 @@ def convert_bioentity(sessionmaker, link, cls, chunk_size):
         session = sessionmaker()
         
         #Cache current objs
-        current_objs = session.query(cls).all()
+        from model_perf_schema.bioentity import Bioentity
+        current_objs = session.query(Bioentity).all()
         id_to_current_obj = dict([(x.id, x) for x in current_objs])
         key_to_current_obj = dict([(x.unique_key(), x) for x in current_objs])
         
@@ -45,10 +54,10 @@ def convert_bioentity(sessionmaker, link, cls, chunk_size):
         for i in range(0, num_chunks):
             old_objs = objs_json[min_id:min_id+chunk_size]
             for obj_json in old_objs:
-                newly_created_obj = cls(obj_json['id'], obj_json['format_name'], obj_json['display_name'], obj_json['bioent_type'], json.dumps(obj_json))
+                newly_created_obj = create_bioentity(obj_json)
                 current_obj_by_id = None if newly_created_obj.id not in id_to_current_obj else id_to_current_obj[newly_created_obj.id]
                 current_obj_by_key = None if newly_created_obj.unique_key() not in key_to_current_obj else key_to_current_obj[newly_created_obj.unique_key()]
-                create_or_update(newly_created_obj, current_obj_by_id, current_obj_by_key, ['format_name', 'class_type', 'json'], session, output_creator)
+                create_or_update(newly_created_obj, current_obj_by_id, current_obj_by_key, ['format_name', 'class_type', 'dbxref', 'json'], session, output_creator)
                                 
                 if current_obj_by_id is not None and current_obj_by_id.id in untouched_obj_ids:
                     untouched_obj_ids.remove(current_obj_by_id.id)
@@ -236,15 +245,15 @@ def convert(session_maker):
         
     ################# Core Converts ###########################
     #Bioentity
-    from model_perf_schema.bioentity import Bioentity
-    #convert_bioentity(session_maker, all_bioentity_link, Bioentity, 1000)
-    
-    #Reference
-    from model_perf_schema.reference import Reference
-    convert_core(session_maker, all_reference_link, Reference, 2000)
+    convert_bioentity(session_maker, all_bioentity_link, 1000)
+#    
+#    #Reference
+#    from model_perf_schema.reference import Reference
+#    convert_core(session_maker, all_reference_link, Reference, 2000)
     
     #Get bioents
     session = session_maker()
+    from model_perf_schema.bioentity import Bioentity
     bioents = session.query(Bioentity).all()
     session.close()
 
@@ -328,26 +337,26 @@ def convert(session_maker):
 #            except Exception:
 #                log.exception( "Unexpected error:" + str(sys.exc_info()[0]) )
 #    ConvertGoSectionThread().start()
-    
-    #Protein section
-    from model_perf_schema.protein import ProteinDomainDetails
-    class ConvertProteinSectionThread (Thread):
-        def run(self):
-            try:
-                convert_by_bioentity(session_maker, protein_domain_details_link, ProteinDomainDetails, bioents)
-            except Exception:
-                log.exception( "Unexpected error:" + str(sys.exc_info()[0]) )
-    ConvertProteinSectionThread().start()
-    
-    #Misc
-    from model_perf_schema.misc import BindingSiteDetails
-    class ConvertMiscThread (Thread):
-        def run(self):
-            try:
-                convert_by_bioentity(session_maker, binding_site_details_link, BindingSiteDetails, bioents)
-            except Exception:
-                log.exception( "Unexpected error:" + str(sys.exc_info()[0]) )
-    ConvertMiscThread().start()
+#   
+#    #Protein section
+#    from model_perf_schema.protein import ProteinDomainDetails
+#    class ConvertProteinSectionThread (Thread):
+#        def run(self):
+#            try:
+#                convert_by_bioentity(session_maker, protein_domain_details_link, ProteinDomainDetails, bioents)
+#            except Exception:
+#                log.exception( "Unexpected error:" + str(sys.exc_info()[0]) )
+#    ConvertProteinSectionThread().start()
+#    
+#    #Misc
+#    from model_perf_schema.misc import BindingSiteDetails
+#    class ConvertMiscThread (Thread):
+#        def run(self):
+#            try:
+#                convert_by_bioentity(session_maker, binding_site_details_link, BindingSiteDetails, bioents)
+#            except Exception:
+#                log.exception( "Unexpected error:" + str(sys.exc_info()[0]) )
+#    ConvertMiscThread().start()
 
 if __name__ == "__main__":
     session_maker = prepare_schema_connection(model_perf_schema, config)
